@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title><%= title || "新規登録" %></title>
+  <title>新規登録</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/styles.css" />
   <script defer src="/main.js"></script>
@@ -25,28 +25,28 @@
 
     <section class="auth-card">
       <h1>新規登録</h1>
-
       <form action="/auth/register" method="POST" class="form">
         <label>
           メールアドレス
           <input type="email" name="email" required />
         </label>
+
         <label>
           パスワード
           <input type="password" name="password" required />
         </label>
+
         <label>
           パスワード（確認）
           <input type="password" name="passwordConfirm" required />
         </label>
+
         <button type="submit" class="btn primary">登録する</button>
       </form>
 
       <p class="auth-link">
-        すでにアカウントをお持ちの方は
+        すでにアカウントがある方は
         <a href="/auth/login">ログイン</a>
       </p>
     </section>
   </main>
-</body>
-</html>

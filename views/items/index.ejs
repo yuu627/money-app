@@ -20,7 +20,7 @@
 
   <main class="container">
     <!-- フラッシュメッセージ -->
-    <% if (errorMessages && errorMessages.length) { %>
+          <% if (typeof errorMessages !== 'undefined' && errorMessages && errorMessages.length) { %>
       <div class="alert alert-error">
         <% errorMessages.forEach(function(msg){ %>
           <p><%= msg %></p>
@@ -28,13 +28,14 @@
       </div>
     <% } %>
 
-    <% if (successMessages && successMessages.length) { %>
+    <% if (typeof successMessages !== 'undefined' && successMessages && successMessages.length) { %>
       <div class="alert alert-success">
         <% successMessages.forEach(function(msg){ %>
           <p><%= msg %></p>
         <% }) %>
       </div>
     <% } %>
+
 
     <!-- サマリー -->
     <%

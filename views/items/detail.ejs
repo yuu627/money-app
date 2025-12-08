@@ -1,0 +1,33 @@
+<% layout('layout') %>
+
+<section class="card">
+  <h1>収支の詳細</h1>
+
+  <dl class="detail-list">
+    <div>
+      <dt>日付</dt>
+      <dd><%= item.date.toISOString().slice(0,10) %></dd>
+    </div>
+    <div>
+      <dt>項目名</dt>
+      <dd><%= item.event %></dd>
+    </div>
+    <div>
+      <dt>区分</dt>
+      <dd><%= item.type === "INCOME" ? "収入" : "支出" %></dd>
+    </div>
+    <div>
+      <dt>金額</dt>
+      <dd><%= item.amount.toLocaleString() %> 円</dd>
+    </div>
+    <div>
+      <dt>メモ</dt>
+      <dd><%= item.memo || "（なし）" %></dd>
+    </div>
+  </dl>
+
+  <div class="form-actions">
+    <a href="/items/edit/<%= item.id %>" class="btn">編集する</a>
+    <a href="/items" class="btn">一覧に戻る</a>
+  </div>
+</section>

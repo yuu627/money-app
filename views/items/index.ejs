@@ -1,0 +1,82 @@
+<% layout('layout') %>
+
+<section class="summary-bar">
+  <div class="summary-item income">
+    総収入
+    <span><%= summary.totalIncome.toLocaleString() %> 円</span>
+  </div>
+  <div class="summary-item expense">
+    総支出
+    <span><%= summary.totalExpense.toLocaleString() %> 円</span>
+  </div>
+  <div class="summary-item balance">
+    残高
+    <span><%= summary.balance.toLocaleString() %> 円</span>
+  </div>
+</section>
+
+<section class="toolbar">
+  <form action="/items" method="GET" class="filter-form">
+    <div class="filter-group">
+      <label>区分</label>
+      <select name="type">
+        <option value="ALL" <%= filterType === "ALL" ? "selected" : "" %>>すべて</option>
+        <option value="INCOME" <%= filterType === "INCOME" ? "selected" : "" %>>収入のみ</option>
+        <option value="EXPENSE" <%= filterType === "EXPENSE" ? "selected" : "" %>>支出のみ</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>開始日</label>
+      <input type="date" name="start" value="<%= start %>" />
+    </div>
+
+    <div class="filter-group">
+      <label>終了日</label>
+      <input type="date" name="end" value="<%= end %>" />
+    </div>
+
+    <button type="submit" class="btn">フィルタ適用</button>
+  </form>
+
+  <a href="/items/new" class="btn primary">＋ 新しい収支を追加</a>
+</section>
+
+<section class="table-wrapper">
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>項目名</th>
+        <th>区分</th>
+        <th>金額</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!items.length) { %>
+        <tr>
+          <td colspan="5" class="empty">データがありません。</td>
+        </tr>
+      <% } %>
+      <% items.forEach(item => { %>
+        <tr class="<%= item.type === 'INCOME' ? 'row-income' : 'row-expense' %>">
+          <td><%= item.date.toISOString().slice(0, 10) %></td>
+          <td>
+            <a href="/items/detail?id=<%= item.id %>">
+              <%= item.event %>
+            </a>
+          </td>
+          <td><%= item.type === "INCOME" ? "収入" : "支出" %></td>
+          <td class="amount"><%= item.amount.toLocaleString() %> 円</td>
+          <td class="actions">
+            <a href="/items/edit/<%= item.id %>" class="btn small">編集</a>
+            <form action="/items/delete/<%= item.id %>" method="POST" onsubmit="return confirm('削除しますか？');">
+              <button type="submit" class="btn small danger">削除</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</section>

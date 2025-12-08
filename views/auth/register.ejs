@@ -1,0 +1,28 @@
+<% layout('layout') %>
+
+<section class="auth-card">
+  <h1>新規登録</h1>
+  <form action="/auth/register" method="POST" class="form">
+    <label>
+      メールアドレス
+      <input type="email" name="email" required />
+    </label>
+
+    <label>
+      パスワード
+      <input type="password" name="password" required />
+    </label>
+
+    <label>
+      パスワード（確認）
+      <input type="password" name="passwordConfirm" required />
+    </label>
+
+    <button type="submit" class="btn primary">登録する</button>
+  </form>
+
+  <p class="auth-link">
+    すでにアカウントがある方は
+    <a href="/auth/login">ログイン</a>
+  </p>
+</section>

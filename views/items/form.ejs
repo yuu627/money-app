@@ -1,0 +1,45 @@
+<% layout('layout') %>
+
+<section class="card">
+  <h1><%= item ? "収支の編集" : "新しい収支の追加" %></h1>
+
+  <form action="<%= item ? "/items/edit/" + item.id : "/items/new" %>" method="POST" class="form">
+    <label>
+      項目名
+      <input type="text" name="event" value="<%= item ? item.event : "" %>" />
+    </label>
+
+    <label>
+      金額（必須）
+      <input type="number" name="amount" required value="<%= item ? item.amount : "" %>" />
+    </label>
+
+    <label>
+      区分（必須）
+      <select name="type" required>
+        <option value="">選択してください</option>
+        <option value="INCOME" <%= item && item.type === "INCOME" ? "selected" : "" %>>収入</option>
+        <option value="EXPENSE" <%= item && item.type === "EXPENSE" ? "selected" : "" %>>支出</option>
+      </select>
+    </label>
+
+    <label>
+      日付
+      <input
+        type="date"
+        name="date"
+        value="<%= item ? item.date.toISOString().slice(0,10) : "" %>"
+      />
+    </label>
+
+    <label>
+      メモ
+      <textarea name="memo" rows="4"><%= item ? item.memo || "" : "" %></textarea>
+    </label>
+
+    <div class="form-actions">
+      <button type="submit" class="btn primary"><%= item ? "更新する" : "保存する" %></button>
+      <a href="/items" class="btn">戻る</a>
+    </div>
+  </form>
+</section>

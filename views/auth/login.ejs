@@ -1,23 +1,48 @@
-<% layout('layout') %>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title><%= title || "ログイン" %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script defer src="/main.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="/" class="logo">Money App</a>
+    </div>
+  </header>
 
-<section class="auth-card">
-  <h1>ログイン</h1>
-  <form action="/auth/login" method="POST" class="form">
-    <label>
-      メールアドレス
-      <input type="email" name="email" required />
-    </label>
+  <main class="container">
+    <% if (errorMessages && errorMessages.length) { %>
+      <div class="alert alert-error">
+        <% errorMessages.forEach(function(msg){ %>
+          <p><%= msg %></p>
+        <% }) %>
+      </div>
+    <% } %>
 
-    <label>
-      パスワード
-      <input type="password" name="password" required />
-    </label>
+    <section class="auth-card">
+      <h1>ログイン</h1>
 
-    <button type="submit" class="btn primary">ログイン</button>
-  </form>
+      <form action="/auth/login" method="POST" class="form">
+        <label>
+          メールアドレス
+          <input type="email" name="email" required />
+        </label>
+        <label>
+          パスワード
+          <input type="password" name="password" required />
+        </label>
+        <button type="submit" class="btn primary">ログイン</button>
+      </form>
 
-  <p class="auth-link">
-    アカウントがない方は
-    <a href="/auth/register">新規登録</a>
-  </p>
-</section>
+      <p class="auth-link">
+        アカウントがない方は
+        <a href="/auth/register">新規登録</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>

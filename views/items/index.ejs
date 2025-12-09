@@ -2,151 +2,153 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>家計簿</title>
+  <title>収支一覧</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/styles.css" />
   <script defer src="/main.js"></script>
 </head>
 <body>
-  <header class="header">
-    <div class="header-left">
-      <a href="/" class="logo">Money App</a>
+  <!-- ヘッダー（ログイン後の共通ナビ） -->
+  <header class="site-header">
+    <div class="site-header__inner">
+      <div class="logo">money tracker</div>
+      <nav class="site-nav">
+        <a href="/items" class="nav-link active">一覧</a>
+        <a href="/items/new" class="nav-link">新規追加</a>
+        <form action="/auth/logout" method="POST" class="logout-form">
+          <button type="submit" class="btn ghost">ログアウト</button>
+        </form>
+      </nav>
     </div>
-    <nav class="header-right">
-      <a href="/items" class="nav-link">一覧</a>
-      <a href="/auth/logout" class="nav-link">ログアウト</a>
-    </nav>
   </header>
 
   <main class="container">
-    <!-- フラッシュメッセージ -->
-          <% if (typeof errorMessages !== 'undefined' && errorMessages && errorMessages.length) { %>
-      <div class="alert alert-error">
-        <% errorMessages.forEach(function(msg){ %>
-          <p><%= msg %></p>
-        <% }) %>
-      </div>
-    <% } %>
-
-    <% if (typeof successMessages !== 'undefined' && successMessages && successMessages.length) { %>
-      <div class="alert alert-success">
-        <% successMessages.forEach(function(msg){ %>
-          <p><%= msg %></p>
-        <% }) %>
-      </div>
-    <% } %>
-
-
     <!-- サマリー -->
-    <%
-      const income = typeof totalIncome !== 'undefined' ? totalIncome : 0;
-      const expense = typeof totalExpense !== 'undefined' ? totalExpense : 0;
-      const balance = income - expense;
-    %>
-
     <section class="summary-bar">
+      <%
+        const income  = (typeof totalIncome  === "number") ? totalIncome  : 0;
+        const expense = (typeof totalExpense === "number") ? totalExpense : 0;
+        const bal     = (typeof balance      === "number") ? balance      : (income - expense);
+
+        function formatYen(n) {
+          return n.toLocaleString("ja-JP");
+        }
+      %>
+
       <div class="summary-item income">
-        <p class="label">総収入</p>
-        <p class="value"><%= income %> 円</p>
+        <span class="label">総収入</span>
+        <span class="value"><%= formatYen(income) %> 円</span>
       </div>
+
       <div class="summary-item expense">
-        <p class="label">総支出</p>
-        <p class="value"><%= expense %> 円</p>
+        <span class="label">総支出</span>
+        <span class="value"><%= formatYen(expense) %> 円</span>
       </div>
+
       <div class="summary-item balance">
-        <p class="label">残高</p>
-        <p class="value"><%= balance %> 円</p>
+        <span class="label">残高</span>
+        <span class="value"><%= formatYen(bal) %> 円</span>
       </div>
     </section>
 
-    <!-- フィルター -->
-    <%
-      const ft = (typeof filterType !== 'undefined' && filterType) ? filterType : 'all';
-      const sd = (typeof startDate !== 'undefined' && startDate) ? startDate : '';
-      const ed = (typeof endDate !== 'undefined' && endDate) ? endDate : '';
-    %>
-
+    <!-- フィルタ -->
     <section class="card">
-      <form action="/items" method="GET" class="filter-bar">
-        <div class="filter-group">
-          <label>収支区分</label>
-          <select name="type">
-            <option value="all" <%= ft === 'all' ? 'selected' : '' %>>すべて</option>
-            <option value="INCOME" <%= ft === 'INCOME' ? 'selected' : '' %>>収入のみ</option>
-            <option value="EXPENSE" <%= ft === 'EXPENSE' ? 'selected' : '' %>>支出のみ</option>
-          </select>
-        </div>
+      <h2 class="card-title">フィルタ</h2>
+      <form class="filters" method="GET" action="/items">
+        <div class="filters-row">
+          <div class="field">
+            <label for="type">収支区分</label>
+            <select id="type" name="type">
+              <option value="ALL" <%= filterType === "ALL" ? "selected" : "" %>>すべて</option>
+              <option value="INCOME" <%= filterType === "INCOME" ? "selected" : "" %>>収入のみ</option>
+              <option value="EXPENSE" <%= filterType === "EXPENSE" ? "selected" : "" %>>支出のみ</option>
+            </select>
+          </div>
 
-        <div class="filter-group">
-          <label>開始日</label>
-          <input type="date" name="startDate" value="<%= sd %>" />
-        </div>
+          <div class="field">
+            <label>期間</label>
+            <div class="date-range">
+              <input type="date" name="start" value="<%= start %>" />
+              <span>〜</span>
+              <input type="date" name="end" value="<%= end %>" />
+            </div>
+          </div>
 
-        <div class="filter-group">
-          <label>終了日</label>
-          <input type="date" name="endDate" value="<%= ed %>" />
+          <div class="field buttons">
+            <button type="submit" class="btn primary">フィルタを適用</button>
+            <a href="/items" class="btn ghost">リセット</a>
+          </div>
         </div>
-
-        <button type="submit" class="btn">フィルタ適用</button>
-        <a href="/items" class="btn ghost">リセット</a>
       </form>
     </section>
 
-    <!-- 新規追加ボタン -->
+    <!-- フラッシュメッセージ -->
+    <% if (successMessages && successMessages.length) { %>
+      <div class="alert alert-success">
+        <% successMessages.forEach(function(msg){ %>
+          <p><%= msg %></p>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% if (errorMessages && errorMessages.length) { %>
+      <div class="alert alert-error">
+        <% errorMessages.forEach(function(msg){ %>
+          <p><%= msg %></p>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <!-- 一覧 -->
     <section class="card">
       <div class="card-header">
-        <h2>収支一覧</h2>
-        <a href="/items/new" class="btn primary">＋ 新規追加</a>
+        <h2 class="card-title">収支一覧</h2>
+        <a href="/items/new" class="btn primary">＋ 新しい収支を追加</a>
       </div>
 
-      <%
-        const list = typeof items !== 'undefined' && items ? items : [];
-      %>
-
-      <% if (list.length === 0) { %>
-        <p>該当するデータがありません。</p>
-      <% } else { %>
-        <table class="items-table">
-          <thead>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>区分</th>
+            <th>項目名</th>
+            <th class="align-right">金額</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!items || items.length === 0) { %>
             <tr>
-              <th>日付</th>
-              <th>項目名</th>
-              <th>区分</th>
-              <th class="right">金額</th>
-              <th></th>
+              <td colspan="5" class="empty">まだ収支が登録されていません。</td>
             </tr>
-          </thead>
-          <tbody>
-            <% list.forEach(function(item){ %>
-              <tr>
-                <td><%= item.date.toISOString().slice(0, 10) %></td>
+          <% } else { %>
+            <% items.forEach(function(item){ %>
+              <tr class="<%= item.type === 'INCOME' ? 'row-income' : 'row-expense' %>">
+                <td><%= item.date.toISOString().slice(0,10) %></td>
                 <td>
-                  <a href="/items/detail?id=<%= item.id %>">
-                    <%= item.event %>
-                  </a>
+                  <span class="badge <%= item.type === 'INCOME' ? 'badge-income' : 'badge-expense' %>">
+                    <%= item.type === "INCOME" ? "収入" : "支出" %>
+                  </span>
                 </td>
                 <td>
-                  <% if (item.type === 'INCOME') { %>
-                    <span class="badge income">収入</span>
-                  <% } else { %>
-                    <span class="badge expense">支出</span>
-                  <% } %>
+                  <a href="/items/<%= item.id %>"><%= item.event %></a>
                 </td>
-                <td class="right"><%= item.amount %> 円</td>
-                <td class="right">
-                  <a href="/items/edit?id=<%= item.id %>" class="table-link">編集</a>
-                  <form action="/items/delete" method="POST" style="display:inline">
-                    <input type="hidden" name="id" value="<%= item.id %>" />
-                    <button type="submit" class="table-link danger" onclick="return confirm('削除しますか？');">
-                      削除
-                    </button>
-                  </form>
+                <td class="align-right">
+                  <%= formatYen(item.amount) %> 円
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <a href="/items/<%= item.id %>/edit" class="link">編集</a>
+                    <form action="/items/<%= item.id %>/delete" method="POST" onsubmit="return confirm('削除してよろしいですか？');">
+                      <button type="submit" class="link danger">削除</button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             <% }); %>
-          </tbody>
-        </table>
-      <% } %>
+          <% } %>
+        </tbody>
+      </table>
     </section>
   </main>
 </body>

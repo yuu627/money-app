@@ -1,23 +1,31 @@
 // routes/items.js
 const express = require("express");
-const { PrismaClient } = require("@prisma/client");
-const { ensureAuth } = require("../middleware/auth");
-
 const router = express.Router();
+
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+
+const { ensureAuth } = require("../middlewares/auth"); 
+
 
 // ヘルパー：サマリー計算
 function calcSummary(items) {
-  let income = 0;
-  let expense = 0;
+  let totalIncome = 0;
+  let totalExpense = 0;
+
   for (const item of items) {
-    if (item.type === "INCOME") income += item.amount;
-    if (item.type === "EXPENSE") expense += item.amount;
+    // フォームで value="INCOME" / "EXPENSE" にしている前提
+    if (item.type === "INCOME") {
+      totalIncome += item.amount;
+    } else if (item.type === "EXPENSE") {
+      totalExpense += item.amount;
+    }
   }
+
   return {
-    totalIncome: income,
-    totalExpense: expense,
-    balance: income - expense
+    totalIncome,
+    totalExpense,
+    balance: totalIncome - totalExpense,
   };
 }
 
@@ -25,10 +33,10 @@ function calcSummary(items) {
 router.get("/", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
 
-  // EJS 側の name 属性に合わせておく
-  const filterType = req.query.type || "all";        // all / INCOME / EXPENSE
-  const startDate  = req.query.startDate || "";
-  const endDate    = req.query.endDate || "";
+  // フィルタ用の値（クエリ名は今の実装に合わせてOKだけど、揃えた方がきれい）
+  const filterType = req.query.type || "ALL"; // ALL / INCOME / EXPENSE
+  const start = req.query.start || "";
+  const end = req.query.end || "";
 
   const where = { userId };
 
@@ -40,14 +48,44 @@ router.get("/", ensureAuth, async (req, res) => {
   }
 
   // 期間フィルタ
-  if (startDate || endDate) {
+  if (start || end) {
     where.date = {};
-    if (startDate) where.date.gte = new Date(startDate);
-    if (endDate) {
-      const d = new Date(endDate);
-      d.setDate(d.getDate() + 1); // 終了日の 23:59:59 まで含めたいので +1日
+    if (start) where.date.gte = new Date(start);
+    if (end) {
+      const d = new Date(end);
+      d.setDate(d.getDate() + 1); // 終了日を含めたいので +1 日
       where.date.lte = d;
     }
+  }
+
+  try {
+    const items = await prisma.item.findMany({
+      where,
+      orderBy: { date: "desc" },
+    });
+
+    // ★ 合計を計算
+    const { totalIncome, totalExpense, balance } = calcSummary(items);
+
+    // ★ EJS に「合計値」として渡す
+    res.render("items/index", {
+      items,
+      totalIncome,
+      totalExpense,
+      balance,
+
+      // フィルタ状態
+      filterType,
+      start,
+      end,
+
+      // フラッシュメッセージ（あれば）
+      errorMessages: req.flash ? req.flash("error") : [],
+      successMessages: req.flash ? req.flash("success") : [],
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching items");
   }
 
   try {

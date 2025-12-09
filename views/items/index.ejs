@@ -8,7 +8,7 @@
   <script defer src="/main.js"></script>
 </head>
 <body>
-  <!-- ヘッダー（ログイン後の共通ナビ） -->
+  <!-- ログイン後のヘッダー -->
   <header class="site-header">
     <div class="site-header__inner">
       <div class="logo">money tracker</div>
@@ -26,12 +26,12 @@
     <!-- サマリー -->
     <section class="summary-bar">
       <%
-        const income  = (typeof totalIncome  === "number") ? totalIncome  : 0;
-        const expense = (typeof totalExpense === "number") ? totalExpense : 0;
-        const bal     = (typeof balance      === "number") ? balance      : (income - expense);
+        const income  = summary?.income ?? 0;
+        const expense = summary?.expense ?? 0;
+        const bal     = summary?.balance ?? (income - expense);
 
         function formatYen(n) {
-          return n.toLocaleString("ja-JP");
+          return Number(n || 0).toLocaleString("ja-JP");
         }
       %>
 

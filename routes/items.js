@@ -226,4 +226,37 @@ router.get("/detail", ensureAuth, async (req, res) => {
   }
 });
 
+// 収支アイテム削除
+router.post("/delete", ensureAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const id = parseInt(req.body.id, 10);
+
+    if (isNaN(id)) {
+      console.error("Invalid id:", req.body.id);
+      return res.status(400).send("Invalid id");
+    }
+
+    // ログインしているユーザーのデータだけ削除する
+    await prisma.item.delete({
+      where: { id: id }
+    });
+
+    // メッセージ出したい場合（connect-flash使ってるなら）
+    if (req.flash) {
+      req.flash("success", "1件削除しました");
+    }
+
+    res.redirect("/items");
+  } catch (err) {
+    console.error(err);
+    if (req.flash) {
+      req.flash("error", "削除中にエラーが発生しました");
+      return res.redirect("/items");
+    }
+    res.status(500).send("Error deleting item");
+  }
+});
+
+
 module.exports = router;

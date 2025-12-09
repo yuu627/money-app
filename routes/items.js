@@ -1,11 +1,16 @@
-// routes/items.js
 const express = require("express");
 const router = express.Router();
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const { ensureAuth } = require("../middlewares/auth"); 
+// ★ このファイルの中でログインチェックを定義する
+function ensureAuth(req, res, next) {
+  if (!req.session || !req.session.userId) {
+    return res.redirect("/auth/login");
+  }
+  next();
+}
 
 
 // ヘルパー：サマリー計算

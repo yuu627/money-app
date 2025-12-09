@@ -2,7 +2,15 @@ const express = require("express");
 const router = express.Router();
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const { ensureAuth } = require("../middlewares/auth");
+
+// 🔒 ログインしてなかったら /auth/login に飛ばす
+function ensureAuth(req, res, next) {
+  if (!req.session.userId) {
+    return res.redirect("/auth/login");
+  }
+  next();
+}
+
 
 // 収支サマリー計算
 function calcSummary(items) {

@@ -24,12 +24,16 @@
 
   <main class="container">
     <!-- サマリー -->
+        <!-- サマリー -->
     <section class="summary-bar">
       <%
-        const income  = summary?.income ?? 0;
-        const expense = summary?.expense ?? 0;
-        const bal     = summary?.balance ?? (income - expense);
-
+        // summary が undefined でもエラーにならないようにガード
+        const s = (typeof summary !== "undefined" && summary) ? summary : {};
+        const income  = Number(s.income  || 0);
+        const expense = Number(s.expense || 0);
+        const bal     = Number(
+          typeof s.balance !== "undefined" ? s.balance : (income - expense)
+        );
         function formatYen(n) {
           return Number(n || 0).toLocaleString("ja-JP");
         }
@@ -50,6 +54,7 @@
         <span class="value"><%= formatYen(bal) %> 円</span>
       </div>
     </section>
+
 
     <!-- フィルタ -->
     <section class="card">

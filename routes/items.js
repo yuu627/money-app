@@ -1,64 +1,51 @@
 const express = require("express");
 const router = express.Router();
-
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const { ensureAuth } = require("../middlewares/auth");
 
-// ★ このファイルの中でログインチェックを定義する
-function ensureAuth(req, res, next) {
-  if (!req.session || !req.session.userId) {
-    return res.redirect("/auth/login");
-  }
-  next();
-}
-
-
-// ヘルパー：サマリー計算
+// 収支サマリー計算
 function calcSummary(items) {
-  let totalIncome = 0;
-  let totalExpense = 0;
+  let income = 0;
+  let expense = 0;
 
   for (const item of items) {
-    // フォームで value="INCOME" / "EXPENSE" にしている前提
     if (item.type === "INCOME") {
-      totalIncome += item.amount;
+      income += item.amount || 0;
     } else if (item.type === "EXPENSE") {
-      totalExpense += item.amount;
+      expense += item.amount || 0;
     }
   }
 
   return {
-    totalIncome,
-    totalExpense,
-    balance: totalIncome - totalExpense,
+    income,
+    expense,
+    balance: income - expense,
   };
 }
 
-// GET /items  一覧＋フィルタ
+// 一覧 + フィルタ
 router.get("/", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
 
-  // フィルタ用の値（クエリ名は今の実装に合わせてOKだけど、揃えた方がきれい）
   const filterType = req.query.type || "ALL"; // ALL / INCOME / EXPENSE
   const start = req.query.start || "";
   const end = req.query.end || "";
 
   const where = { userId };
 
-  // 区分フィルタ
   if (filterType === "INCOME") {
     where.type = "INCOME";
   } else if (filterType === "EXPENSE") {
     where.type = "EXPENSE";
   }
 
-  // 期間フィルタ
   if (start || end) {
     where.date = {};
     if (start) where.date.gte = new Date(start);
     if (end) {
       const d = new Date(end);
-      d.setDate(d.getDate() + 1); // 終了日を含めたいので +1 日
+      d.setDate(d.getDate() + 1); // 終了日を含めるため +1 日
       where.date.lte = d;
     }
   }
@@ -69,63 +56,16 @@ router.get("/", ensureAuth, async (req, res) => {
       orderBy: { date: "desc" },
     });
 
-    // ★ 合計を計算
-    const { totalIncome, totalExpense, balance } = calcSummary(items);
+    const summary = calcSummary(items);
 
-    // ★ EJS に「合計値」として渡す
     res.render("items/index", {
       items,
-      totalIncome,
-      totalExpense,
-      balance,
-
-      // フィルタ状態
+      summary,
       filterType,
       start,
       end,
-
-      // フラッシュメッセージ（あれば）
-      errorMessages: req.flash ? req.flash("error") : [],
-      successMessages: req.flash ? req.flash("success") : [],
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching items");
-  }
-
-  try {
-    const items = await prisma.item.findMany({
-      where,
-      orderBy: { date: "desc" },
-    });
-
-    // ここでサマリーを計算（既に calcSummary があるならそれを使う）
-    const summary = calcSummary(items);
-    // 例:
-    // function calcSummary(items) {
-    //   let income = 0, expense = 0;
-    //   for (const it of items) {
-    //     if (it.type === "INCOME") income += it.amount;
-    //     else if (it.type === "EXPENSE") expense += it.amount;
-    //   }
-    //   return { income, expense, balance: income - expense };
-    // }
-
-    res.render("items/index", {
-      items,
-
-      // ★ EJS が期待している名前で渡す
-      totalIncome: summary.income,
-      totalExpense: summary.expense,
-
-      // フィルタ状態（EJS 側の変数名と合わせる）
-      filterType,
-      startDate,
-      endDate,
-
-      // フラッシュメッセージ（なければとりあえず空配列でOK）
-      errorMessages: req.flash ? req.flash("error") : [],
-      successMessages: req.flash ? req.flash("success") : [],
+      successMessages: req.flash("success"),
+      errorMessages: req.flash("error"),
     });
   } catch (err) {
     console.error(err);
@@ -133,173 +73,165 @@ router.get("/", ensureAuth, async (req, res) => {
   }
 });
 
-
-// GET /items/new  新規作成フォーム
+// 新規作成フォーム
 router.get("/new", ensureAuth, (req, res) => {
-  res.render("items/form", { item: null });
+  res.render("items/form", {
+    item: null,
+    errors: [],
+  });
 });
 
-// POST /items/new  新規作成
-router.post("/new", ensureAuth, async (req, res) => {
+// 新規登録処理
+router.post("/", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
   const { event, amount, type, date, memo } = req.body;
 
-  if (!amount || !type) {
-    req.flash("error", "金額と収支区分は必須です。");
-    return res.redirect("/items/new");
+  const errors = [];
+  if (!amount) errors.push("金額は必須です。");
+  if (!type) errors.push("収支区分は必須です。");
+  if (!date) errors.push("日付は必須です。");
+
+  if (errors.length) {
+    return res.status(400).render("items/form", {
+      item: {
+        event,
+        amount,
+        type,
+        memo,
+        date: date ? new Date(date) : new Date(),
+      },
+      errors,
+    });
   }
 
   try {
     await prisma.item.create({
       data: {
         userId,
-        event: event || "(無題)",
-        amount: parseInt(amount, 10),
-        type, // "INCOME" or "EXPENSE"
+        event: event || "",
+        amount: Number(amount),
+        type,
         memo: memo || "",
-        date: date ? new Date(date) : new Date()
-      }
+        date: new Date(date),
+      },
     });
+    req.flash("success", "収支を登録しました。");
     res.redirect("/items");
   } catch (err) {
     console.error(err);
-    req.flash("error", "保存に失敗しました。");
-    res.redirect("/items/new");
+    req.flash("error", "登録に失敗しました。");
+    res.redirect("/items");
   }
 });
 
-// GET /items/edit/:id  編集フォーム
-router.get("/edit/:id", ensureAuth, async (req, res) => {
-  const id = Number(req.params.id);
+// 編集フォーム
+router.get("/:id/edit", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
+  const id = Number(req.params.id);
 
   try {
     const item = await prisma.item.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!item) {
-      req.flash("error", "項目が見つかりません。");
+      req.flash("error", "データが見つかりませんでした。");
       return res.redirect("/items");
     }
 
-    res.render("items/form", { item });
+    res.render("items/form", {
+      item,
+      errors: [],
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error loading item");
+    req.flash("error", "編集画面の表示に失敗しました。");
+    res.redirect("/items");
   }
 });
 
-// POST /items/edit/:id  更新
-router.post("/edit/:id", ensureAuth, async (req, res) => {
-  const id = Number(req.params.id);
+// 更新処理
+router.post("/:id", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
+  const id = Number(req.params.id);
   const { event, amount, type, date, memo } = req.body;
 
-  if (!amount || !type) {
-    req.flash("error", "金額と収支区分は必須です。");
-    return res.redirect(`/items/edit/${id}`);
+  const errors = [];
+  if (!amount) errors.push("金額は必須です。");
+  if (!type) errors.push("収支区分は必須です。");
+  if (!date) errors.push("日付は必須です。");
+
+  if (errors.length) {
+    return res.status(400).render("items/form", {
+      item: {
+        id,
+        event,
+        amount,
+        type,
+        memo,
+        date: date ? new Date(date) : new Date(),
+      },
+      errors,
+    });
   }
 
   try {
-    const item = await prisma.item.findFirst({ where: { id, userId } });
-    if (!item) {
-      req.flash("error", "項目が見つかりません。");
-      return res.redirect("/items");
-    }
-
-    await prisma.item.update({
-      where: { id },
+    await prisma.item.updateMany({
+      where: { id, userId },
       data: {
-        event: event || "(無題)",
-        amount: parseInt(amount, 10),
+        event: event || "",
+        amount: Number(amount),
         type,
         memo: memo || "",
-        date: date ? new Date(date) : new Date()
-      }
+        date: new Date(date),
+      },
     });
-
+    req.flash("success", "収支を更新しました。");
     res.redirect("/items");
   } catch (err) {
     console.error(err);
     req.flash("error", "更新に失敗しました。");
-    res.redirect(`/items/edit/${id}`);
+    res.redirect("/items");
   }
 });
 
-// POST /items/delete/:id  削除
-router.post("/delete/:id", ensureAuth, async (req, res) => {
-  const id = Number(req.params.id);
+// 削除
+router.post("/:id/delete", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
+  const id = Number(req.params.id);
 
   try {
-    const item = await prisma.item.findFirst({ where: { id, userId } });
-    if (!item) {
-      req.flash("error", "項目が見つかりません。");
-      return res.redirect("/items");
-    }
-    await prisma.item.delete({ where: { id } });
-    res.redirect("/items");
+    await prisma.item.deleteMany({
+      where: { id, userId },
+    });
+    req.flash("success", "削除しました。");
   } catch (err) {
     console.error(err);
     req.flash("error", "削除に失敗しました。");
-    res.redirect("/items");
   }
+
+  res.redirect("/items");
 });
 
-// GET /items/detail?id=123  詳細表示（query 使用）
-router.get("/detail", ensureAuth, async (req, res) => {
-  const id = Number(req.query.id);
+// 詳細ページ
+router.get("/:id", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
+  const id = Number(req.params.id);
 
   try {
     const item = await prisma.item.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!item) {
-      req.flash("error", "項目が見つかりません。");
-      return res.redirect("/items");
+      return res.status(404).send("Not found");
     }
 
-    res.render("items/detail", { item });
+    res.render("items/show", { item });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error loading detail");
+    res.status(500).send("Error fetching detail");
   }
 });
-
-// 収支アイテム削除
-router.post("/delete", ensureAuth, async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    const id = parseInt(req.body.id, 10);
-
-    if (isNaN(id)) {
-      console.error("Invalid id:", req.body.id);
-      return res.status(400).send("Invalid id");
-    }
-
-    // ログインしているユーザーのデータだけ削除する
-    await prisma.item.delete({
-      where: { id: id }
-    });
-
-    // メッセージ出したい場合（connect-flash使ってるなら）
-    if (req.flash) {
-      req.flash("success", "1件削除しました");
-    }
-
-    res.redirect("/items");
-  } catch (err) {
-    console.error(err);
-    if (req.flash) {
-      req.flash("error", "削除中にエラーが発生しました");
-      return res.redirect("/items");
-    }
-    res.status(500).send("Error deleting item");
-  }
-});
-
 
 module.exports = router;

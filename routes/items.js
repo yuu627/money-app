@@ -25,24 +25,27 @@ function calcSummary(items) {
 router.get("/", ensureAuth, async (req, res) => {
   const userId = req.session.userId;
 
-  const filterType = req.query.type || "ALL"; // ALL / INCOME / EXPENSE
-  const start = req.query.start || "";
-  const end = req.query.end || "";
+  // EJS 側の name 属性に合わせておく
+  const filterType = req.query.type || "all";        // all / INCOME / EXPENSE
+  const startDate  = req.query.startDate || "";
+  const endDate    = req.query.endDate || "";
 
   const where = { userId };
 
+  // 区分フィルタ
   if (filterType === "INCOME") {
     where.type = "INCOME";
   } else if (filterType === "EXPENSE") {
     where.type = "EXPENSE";
   }
 
-  if (start || end) {
+  // 期間フィルタ
+  if (startDate || endDate) {
     where.date = {};
-    if (start) where.date.gte = new Date(start);
-    if (end) {
-      const d = new Date(end);
-      d.setDate(d.getDate() + 1); // 終了日の 23:59:59 まで含めたいので +1
+    if (startDate) where.date.gte = new Date(startDate);
+    if (endDate) {
+      const d = new Date(endDate);
+      d.setDate(d.getDate() + 1); // 終了日の 23:59:59 まで含めたいので +1日
       where.date.lte = d;
     }
   }
@@ -50,23 +53,43 @@ router.get("/", ensureAuth, async (req, res) => {
   try {
     const items = await prisma.item.findMany({
       where,
-      orderBy: { date: "desc" }
+      orderBy: { date: "desc" },
     });
 
+    // ここでサマリーを計算（既に calcSummary があるならそれを使う）
     const summary = calcSummary(items);
+    // 例:
+    // function calcSummary(items) {
+    //   let income = 0, expense = 0;
+    //   for (const it of items) {
+    //     if (it.type === "INCOME") income += it.amount;
+    //     else if (it.type === "EXPENSE") expense += it.amount;
+    //   }
+    //   return { income, expense, balance: income - expense };
+    // }
 
     res.render("items/index", {
       items,
-      summary,
+
+      // ★ EJS が期待している名前で渡す
+      totalIncome: summary.income,
+      totalExpense: summary.expense,
+
+      // フィルタ状態（EJS 側の変数名と合わせる）
       filterType,
-      start,
-      end
+      startDate,
+      endDate,
+
+      // フラッシュメッセージ（なければとりあえず空配列でOK）
+      errorMessages: req.flash ? req.flash("error") : [],
+      successMessages: req.flash ? req.flash("success") : [],
     });
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching items");
   }
 });
+
 
 // GET /items/new  新規作成フォーム
 router.get("/new", ensureAuth, (req, res) => {
